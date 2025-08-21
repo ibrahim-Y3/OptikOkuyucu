@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TYT Optik Değerlendirme</title>
+  <style>
+    :root{
+      --bg:#0b1220; --card:#0f172a; --muted:#94a3b8; --text:#e2e8f0; --acc:#22d3ee; --bad:#ef4444; --good:#22c55e; --warn:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;background:linear-gradient(140deg,#0b1220,#0b1020,#111827);color:var(--text)}
+    header{position:sticky;top:0;background:#0b1220aa;backdrop-filter:blur(8px);border-bottom:1px solid #1f2937;z-index:10}
+    .wrap{max-width:1200px;margin:0 auto;padding:20px}
+    h1{font-size:clamp(22px,2.4vw,32px);margin:8px 0 2px}
+    p.sub{color:var(--muted);margin:0 0 8px}
+    .grid{display:grid;gap:16px}
+    .card{background:var(--card);border:1px solid #1f2937;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .card h2{margin:0 0 8px;font-size:20px}
+    .card .body{padding:16px}
+    textarea{width:100%;min-height:180px;background:#0b1220;color:var(--text);border:1px solid #263244;border-radius:12px;padding:12px;font-family:ui-monospace}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    button, .btn{background:#111827;border:1px solid #243244;color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;transition:.2s}
+    button:hover,.btn:hover{transform:translateY(-1px);border-color:#334155}
+    .btn-acc{background:linear-gradient(135deg,#06b6d4,#22d3ee);border:none;color:#00222a;font-weight:700}
+    .tabbar{display:flex;gap:8px;flex-wrap:wrap}
+    .tab{padding:10px 14px;border-radius:999px;background:#0b1220;border:1px solid #263244;color:#e2e8f0;cursor:pointer}
+    .tab.active{background:linear-gradient(135deg,#0ea5e9,#22d3ee);color:#001018;border:none}
+    .sheet{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:12px}
+    .q{background:#0b1220;border:1px solid #1f2a3a;border-radius:12px;padding:10px}
+    .q h4{margin:0 0 8px;font-size:14px;color:#cbd5e1}
+    .choices{display:grid;grid-template-columns:repeat(6,auto);gap:6px;align-items:center}
+    .choices label{padding:6px 8px;border:1px solid #2a3648;border-radius:8px;cursor:pointer;text-align:center;font-size:13px}
+    .choices input{display:none}
+    .choices input:checked + label{outline:2px solid #22d3ee;border-color:#22d3ee;background:#06242b}
+    .summary{margin-top:14px;border-top:1px dashed #2a3648;padding-top:12px}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:10px;border-bottom:1px solid #1f2937;text-align:center}
+    th{text-align:center;color:#cbd5e1}
+    .ok{color:var(--good)} .bad{color:var(--bad)} .warnC{color:var(--warn)}
+    footer{color:#64748b;font-size:12px;padding:24px 0;text-align:center}
+    nav{display:flex;gap:12px;margin-top:8px}
+    nav a{color:#22d3ee;text-decoration:none;font-size:14px}
+    nav a:hover{text-decoration:underline}
+   .choices label.correctAns {
+  background: #062b19;
+  border-color: #22c55e;
+  color: #22c55e;
+  font-weight: bold;
+}
+
+/* Öğrencinin yanlış işaretlediği şık */
+.choices label.wrongAns {
+  background: #2b0c0c;
+  border-color: #ef4444;
+  color: #ef4444;
+  font-weight: bold;
+}
+
+/* Cevap anahtarındaki doğru şık (her durumda görünsün) */
+.choices label.correctKey {
+  background: #062b19;
+  border-color: #22c55e;
+  color: #22c55e;
+  font-weight: bold;
+}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>TYT Optik Değerlendirme</h1>
+      <p class="sub">Öğrenci optiğini doldurun 
+      <nav>
+        <a href="index.html">Optik</a>
+        <a href="anahtar.html" target="_blank">Cevap Anahtarı</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    
+    <section class="card" id="sheetCard">
+      <div class="body">
+        <h2>Öğrenci Optiği</h2>
+        <div class="tabbar" id="tabs"></div>
+        <div id="sheet"></div>
+        <div class="controls">
+          <button class="btn-acc" id="calcBtn">Hesapla</button>
+          <button class="btn" id="clearBtn">İşaretlemeleri Temizle</button>
+          <button class="btn" id="exportCsv">CSV İndir</button>
+        </div>
+        <div class="summary" id="summary"></div>
+      </div>
+    </section>
+  </main>
+
+  
+
+<script>
+const TESTS = {
+  TR: { name: 'Türkçe', count: 40 },
+  SOC: { name: 'Sosyal Bilimler', count: 20 },
+  MATH: { name: 'Temel Matematik', count: 40 },
+  SCI: { name: 'Fen Bilimleri', count: 20 }
+};
+
+let answerKey = { TR: {}, SOC: {}, MATH: {}, SCI: {} };
+let responses = { TR: {}, SOC: {}, MATH: {}, SCI: {} };
+let active = 'TR';
+
+function el(tag, attrs={}, children=[]) {
+  const e = document.createElement(tag);
+  Object.entries(attrs).forEach(([k,v])=>{
+    if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else e.setAttribute(k,v);
+  });
+  (Array.isArray(children)?children:[children]).filter(Boolean).forEach(c=>{
+    if(typeof c === 'string') e.appendChild(document.createTextNode(c)); else e.appendChild(c);
+  });
+  return e;
+}
+
+function mountTabs(){
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML='';
+  Object.keys(TESTS).forEach(key=>{
+    const t = el('button',{class:'tab'+(active===key?' active':''), 'data-k':key}, TESTS[key].name + ` (${TESTS[key].count})`);
+    t.addEventListener('click',()=>{active=key; mountTabs(); mountSheet();});
+    tabs.appendChild(t);
+  });
+}
+
+function mountSheet(){
+  const host = document.getElementById('sheet');
+  host.innerHTML='';
+  const grid = el('div',{class:'sheet'});
+  const count = TESTS[active].count;
+  for(let i=1;i<=count;i++){
+    const q = el('div',{class:'q'});
+    const head = el('h4',{},[`${TESTS[active].name} — ${i}. Soru `]);
+    const choices = el('div',{class:'choices'});
+    const opts = ['A','B','C','D','E'];
+    opts.forEach(opt=>{
+      const id=`${active}-${i}-${opt}`;
+      const inp = el('input',{type:'radio',name:`${active}-${i}`,id, value:opt});
+      inp.checked = responses[active][i]===opt;
+      inp.addEventListener('click', (e)=>{
+  if (responses[active][i] === opt) {
+  
+    inp.checked = false;
+    delete responses[active][i];
+  } else {
+    responses[active][i] = opt;
+  }
+  persistState();
+});
+      const lab = el('label',{for:id},opt);
+      choices.appendChild(inp); choices.appendChild(lab);
+    });
+    q.appendChild(head); q.appendChild(choices);
+    grid.appendChild(q);
+  }
+  host.appendChild(grid);
+}
+
+function calcOne(testKey){
+  const total = TESTS[testKey].count;
+  let correct=0, wrong=0, blank=0;
+  for(let i=1;i<=total;i++){
+    const ans = responses[testKey][i];
+    const key = answerKey[testKey][i];
+    if(!ans){ blank++; continue; }
+    if(!key){ blank++; continue; }
+    if(ans===key) correct++; else wrong++;
+  }
+  const net = +(correct - wrong/4).toFixed(2);
+  return {correct, wrong, blank, net};
+}
+
+function renderSummary(){
+  const box = document.getElementById('summary');
+  const res = {};
+  let totalCorrect=0,totalWrong=0,totalBlank=0,totalNet=0;
+  Object.keys(TESTS).forEach(k=>{
+    res[k]=calcOne(k);
+    totalCorrect+=res[k].correct; totalWrong+=res[k].wrong; totalBlank+=res[k].blank; totalNet+=res[k].net;
+  });
+  box.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Doğru</th>
+          <th>Yanlış</th>
+          <th>Boş</th>
+          <th>Net</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${Object.keys(TESTS).map(k=>{
+          const r=res[k];
+          return `<tr>
+            <td>${TESTS[k].name}</td>
+            <td class="ok">${r.correct}</td>
+            <td class="bad">${r.wrong}</td>
+            <td class="warnC">${r.blank}</td>
+            <td><strong>${r.net.toFixed(2)}</strong></td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th>Toplam</th>
+          <th class="ok">${totalCorrect}</th>
+          <th class="bad">${totalWrong}</th>
+          <th class="warnC">${totalBlank}</th>
+          <th><strong>${totalNet.toFixed(2)}</strong></th>
+        </tr>
+      </tfoot>
+    </table>
+  `;
+}
+function highlightAnswers(){
+  Object.keys(TESTS).forEach(k=>{
+    for(let i=1;i<=TESTS[k].count;i++){
+      const ans = responses[k][i];
+      const key = answerKey[k][i];
+
+      const opts = document.getElementsByName(`${k}-${i}`);
+      opts.forEach(opt=>{
+        const lab = document.querySelector(`label[for='${opt.id}']`);
+        lab.classList.remove("correctAns","wrongAns","correctKey");
+
+        if(!key) return; // anahtar yoksa boş bırak
+
+        if(ans && ans === key && opt.checked){
+          lab.classList.add("correctAns");
+        } else if(ans && ans !== key && opt.checked){
+          lab.classList.add("wrongAns");
+        }
+
+        // Doğru şık (öğrenci yanlış işaretlemiş olsa bile) gösterilsin
+        if(opt.value === key){
+          lab.classList.add("correctKey");
+        }
+      });
+    }
+  });
+  
+}
+function exportCSV(){
+  const rows = [["Test","Soru","Anahtar","ogrenci","Durum"]];
+  Object.keys(TESTS).forEach(k=>{
+    for(let i=1;i<=TESTS[k].count;i++){
+      const key = answerKey[k][i]||'';
+      const ans = responses[k][i]||'';
+      let status='empty';
+      if(ans && key){ status = (ans===key)?'correct':'wrong'; }
+      rows.push([TESTS[k].name, i, key, ans, status]);
+    }
+  });
+  const res = {TR:calcOne('TR'), SOC:calcOne('SOC'), MATH:calcOne('MATH'), SCI:calcOne('SCI')};
+  rows.push([],["Ozet","correct","wrong","empty","Net"]);
+  Object.keys(TESTS).forEach(k=>{
+    const r=res[k];
+    rows.push([TESTS[k].name, r.correct, r.wrong, r.blank, r.net]);
+  });
+  const total = Object.values(res).reduce((a,b)=>({correct:a.correct+b.correct, wrong:a.wrong+b.wrong, blank:a.blank+b.blank, net:a.net+b.net}),{correct:0,wrong:0,blank:0,net:0});
+  rows.push(["Toplam", total.correct, total.wrong, total.blank, total.net.toFixed(2)]);
+
+  const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = el('a',{href:url,download:'tyt_optik_sonuclar.csv'});
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
+
+function persistState(){
+  const data = {answerKey, responses};
+  localStorage.setItem('tyt-optik-state', JSON.stringify(data));
+}
+function loadState(){
+  try{
+    const raw = localStorage.getItem('tyt-optik-state');
+    if(!raw) return;
+    const data = JSON.parse(raw);
+    if(data.answerKey) answerKey = data.answerKey;
+    if(data.responses) responses = data.responses;
+  }catch(e){console.warn('state load failed',e)}
+}
+
+function clearResponses(){
+  if(confirm('Tüm işaretlemeler sıfırlansın mı?')){
+    responses={TR:{},SOC:{},MATH:{},SCI:{}}; persistState(); mountSheet(); renderSummary();
+  }
+}
+
+// Events
+document.getElementById('calcBtn').addEventListener('click', ()=>{
+  renderSummary();
+  highlightAnswers();
+  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+});
+ document.getElementById('clearBtn').addEventListener('click', clearResponses);
+ document.getElementById('exportCsv').addEventListener('click', exportCSV);
+
+// Init
+loadState();
+mountTabs();
+mountSheet();
+renderSummary();
+</script>
+</body>
+</html>
