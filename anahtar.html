@@ -19,12 +19,10 @@
   <button onclick="saveKey()">Kaydet</button>
 
   <script>
-    
     const tests = { TR:40, SOC:20, MATH:40, SCI:20 };
 
-    
+    // Metinden cevap harflerini çıkar
     function extractChoices(text){
-    
       const re = /(?:^|[^A-Za-zÇçĞğİıÖöŞşÜü0-9])(?:\d+\s*[\.\-:]?\s*)?([A-Ea-e])(?=[^A-Za-zÇçĞğİıÖöŞşÜü0-9]|$)/g;
       const out = [];
       let m;
@@ -54,6 +52,7 @@
         }
       }
 
+      
       let answerKey = { TR:{}, SOC:{}, MATH:{}, SCI:{} };
       let idx = 0;
       for(const k of Object.keys(tests)){
@@ -62,8 +61,14 @@
         }
       }
 
+      
       let state = JSON.parse(localStorage.getItem("tyt-optik-state") || "{}");
+
+      
       state.answerKey = answerKey;
+      if(!state.responses) state.responses = {};
+
+   
       localStorage.setItem("tyt-optik-state", JSON.stringify(state));
 
       alert("Cevap anahtarı kaydedildi! (Bulunan: "+raw.length+" / Beklenen: "+expected+")");
